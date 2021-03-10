@@ -24,10 +24,7 @@ class GenerateSeasonalMetrics():
         self.__username = username
         self.__project_name = project_name
         self.__study_area_geo = study_area_geo
-        
-        # Define the export geometry
-        self.__export_geometry = study_area_geo.bounds().getInfo()['coordinates'][0]
-        
+                
         # Define the task dictionary
         self.__covariate_export_tasks = {}
         
@@ -79,8 +76,12 @@ class GenerateSeasonalMetrics():
             
         # Export the image collections to their asset collections
         asset_names = ['spring_nbr', 'summer_nbr', 'summer_b5', 'fall_nbr']
-        for i, collection in enumerate(interpolated_colllections):            
-            self.__export_fitted_composites(collection, asset_names[i])
+        for i, collection in enumerate(interpolated_colllections):
+            
+            if asset_names[i] != "summer_nbr":
+                pass
+            else:
+                self.__export_fitted_composites(collection, asset_names[i])
                 
         return None
             
@@ -417,7 +418,7 @@ class GenerateSeasonalMetrics():
         export_tasks = {}
            
         # Create the base path for the subsequent exports
-        export_path_base = 'users/'+ self.__username+'/'+self.__project_name+'/'+export_sub_dir+'/'
+        export_path_base = 'users/'+ self.__username+'/'+self.__project_name+'/'+export_sub_dir+'_2/'
      
         # Loop through each year of the time-series
         for year in range(self.__start_export_year, self.__end_export_year+1):
@@ -429,8 +430,17 @@ class GenerateSeasonalMetrics():
             start_date = ee.Date.fromYMD(year, 1, 1)
             end_date = ee.Date.fromYMD(year, 12, 31)
             
+            # Set the image's metdata date
+            if export_sub_dir == 'spring_nbr':
+                image_date = ee.Date.fromYMD(year, 3, 1).millis()
+            elif export_sub_dir == 'summer_nbr' or export_sub_dir == 'summer_b5':
+                image_date = ee.Date.fromYMD(year, 6, 1).millis()
+            elif export_sub_dir == 'fall_nbr':
+                image_date = ee.Date.fromYMD(year, 9, 1).millis()
+            
             # Select out the current image to be processed
-            export_image = ee.Image(time_series.filterDate(start_date, end_date).first())
+            export_image = ee.Image(time_series.filterDate(start_date, end_date).first()) \
+                .set('system:time_start', image_date)
             
             # Execute the export of the current year's image to an asset collection
             task = ee.batch.Export.image.toAsset(
@@ -438,7 +448,7 @@ class GenerateSeasonalMetrics():
                 description = 'Export-Image-' + export_asset_name,
                 assetId = export_path_base + export_asset_name,
                 maxPixels = 1e13, 
-                region = self.__export_geometry,
+                region = self.__study_area_geo,
                 crs = 'EPSG:5070', 
                 crsTransform = '[30.0, 0, 15.0, 0, -30.0, 15.0]' 
                 )
@@ -461,7 +471,10 @@ if __name__ == "__main__":
     # Define the years that will be exported as assets
     start_export_year = 2011
     end_export_year = 2020
-    study_area = ee.FeatureCollection('TIGER/2018/States').filterMetadata('NAME', 'equals', 'Oregon').geometry()
+
+    study_area = ee.Geometry.Polygon([[[-123.31, 44.59],[-123.31, 44.53],[-123.21, 44.53],[-123.21, 44.59]]], None, False)
+    
+#    study_area = ee.FeatureCollection('TIGER/2018/States').filterMetadata('NAME', 'equals', 'Oregon').geometry()
     project_name = 'bird_species_2020'
     
     # Specify the GEE account name to which the data will be exported
