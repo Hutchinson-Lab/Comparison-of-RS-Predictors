@@ -131,10 +131,10 @@ for (i in 1:nrow(locations_pt)) {  # there may be a faster way to do this with l
   buffer_sp <- as_Spatial(buffer) # convert buffered region to SpatialPolygonsDataFrame
   
   # extract values from raster in the buffered region
-  buffered_values <- extract(OR_elev$elevation, buffer_sp)
+  buffered_values <- unlist(extract(OR_tc$TCA, buffer_sp))
   
   # Use list apply to calculate the mean for the buffered region
-  summary_df[i, "mean"] <- unlist(lapply(buffered_values, FUN=mean))
-  summary_df[i, "std_dev"] <- unlist(lapply(buffered_values, FUN=sd))
+  summary_df[i, "mean"] <- mean(buffered_values)
+  summary_df[i, "std_dev"] <- sd(buffered_values)
   
 }
